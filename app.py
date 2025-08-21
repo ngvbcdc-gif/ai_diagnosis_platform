@@ -1,98 +1,47 @@
 import streamlit as st
-from transformers import pipeline
-from deep_translator import GoogleTranslator
 
-# تحميل النموذج من Hugging Face
-@st.cache_resource
-def load_model():
-    return pipeline("text-classification", model="nlptown/bert-base-multilingual-uncased-sentiment")
+st.title("الطبيب الافتراضي")
 
-model = load_model()
-
-# إعدادات الصفحة
-st.set_page_config(page_title="الطبيب الافتراضي", layout="wide", page_icon="🧠")
-
-# تصميم CSS لتحسين المظهر
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f5f7fa;
-        color: #333333;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        padding: 2rem 3rem;
+# قاعدة بيانات بسيطة للأعراض، التشخيص، والنصائح
+medical_data = {
+    "حمى": {
+        "diagnosis": "التهاب أو عدوى محتملة",
+        "advice": "اشرب سوائل كثيرة، واسترح، وإذا استمرت الحرارة أكثر من 3 أيام، راجع الطبيب."
+    },
+    "صداع": {
+        "diagnosis": "صداع توتري أو نصفي",
+        "advice": "جرب الراحة، تناول مسكنات مثل الباراسيتامول، وقلل من التوتر."
+    },
+    "سعال": {
+        "diagnosis": "التهاب في الجهاز التنفسي",
+        "advice": "اشرب مشروبات دافئة، وحاول تجنب التدخين والهواء الملوث."
+    },
+    "رشح": {
+        "diagnosis": "نزلة برد",
+        "advice": "الراحة وتناول فيتامين سي، واستخدام أدوية الزكام حسب الحاجة."
+    },
+    "آلام في المعدة": {
+        "diagnosis": "مشاكل هضمية أو التهاب معدة",
+        "advice": "تجنب الأطعمة الحارة والدهنية، وتناول وجبات صغيرة ومتكررة."
     }
-    .title {
-        font-size: 3rem;
-        font-weight: 700;
-        color: #0a71c5;
-        margin-bottom: 0.2rem;
-    }
-    .subtitle {
-        font-size: 1.3rem;
-        color: #555555;
-        margin-bottom: 2rem;
-    }
-    .textarea {
-        font-size: 1.1rem;
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid #ddd;
-        background-color: white;
-        width: 100%;
-    }
-    .btn-primary {
-        background-color: #0a71c5;
-        color: white;
-        font-weight: 600;
-        padding: 0.6rem 1.5rem;
-        border-radius: 10px;
-        border: none;
-        cursor: pointer;
-    }
-    .btn-primary:hover {
-        background-color: #065a9f;
-    }
-    .footer {
-        font-size: 0.9rem;
-        color: #999999;
-        margin-top: 3rem;
-        text-align: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
+}
 
-with st.container():
-    st.markdown('<h1 class="title">🧠 الطبيب الافتراضي (مجاني)</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="subtitle">📝 اكتب الأعراض التي تشعر بها باللغة العربية وسنقوم بتحليل مبدئي باستخدام الذكاء الاصطناعي.</p>', unsafe_allow_html=True)
+# إدخال الأعراض
+symptoms_input = st.text_input("ادخل أعراضك (مثلاً: صداع، حمى، سعال)")
 
-    symptoms_ar = st.text_area("✍️ اكتب الأعراض هنا:", height=140, key="symptoms_input", help="مثلاً: صداع، سعال، حمى...")
+if st.button("تشخيص"):
+    symptoms_list = [s.strip() for s in symptoms_input.split(",")]
 
-    if st.button("تشخيص", key="diagnose_button"):
-        if symptoms_ar.strip() != "":
-            with st.spinner("🧠 جاري تحليل الأعراض..."):
-                try:
-                    symptoms_en = GoogleTranslator(source='auto', target='en').translate(symptoms_ar)
-                    result = model(symptoms_en)
-                    result_text_en = result[0]['label']
-                    result_text_ar = GoogleTranslator(source='en', target='ar').translate(result_text_en)
-
-                    advice_map = {
-                        "1 star": "ننصح بمراجعة الطبيب فوراً.",
-                        "2 stars": "يمكن استخدام مسكنات خفيفة مثل الباراسيتامول.",
-                        "3 stars": "الأعراض خفيفة، راحة وشرب ماء كثير مفيد.",
-                        "4 stars": "الأعراض معتدلة، يمكن استخدام أدوية مساعدة بعد استشارة الصيدلي.",
-                        "5 stars": "الأعراض جيدة، حافظ على نمط حياة صحي."
-                    }
-                    advice = advice_map.get(result_text_en, "يرجى مراجعة طبيب مختص.")
-
-                    st.success("✅ التشخيص المبدئي:")
-                    st.markdown(f"**⚕️ التحليل:** {result_text_ar}")
-                    st.markdown(f"📊 (التقييم من النموذج: `{result_text_en}`)")
-                    st.info(f"💊 **نصيحة دوائية:** {advice}")
-
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء التحليل: {e}")
+    results = []
+    for symptom in symptoms_list:
+        if symptom in medical_data:
+            info = medical_data[symptom]
+            results.append(f"**{symptom}**: التشخيص: {info['diagnosis']} \nنصيحة: {info['advice']}")
         else:
-            st.warning("يرجى إدخال الأعراض أولاً.")
+            results.append(f"**{symptom}**: لا يوجد معلومات كافية، يرجى استشارة الطبيب.")
+    
+    if results:
+        st.markdown("\n\n".join(results))
+    else:
+        st.warning("يرجى إدخال أعراض صحيحة.")
 
-    st.markdown('<div class="footer">تم ابتكاره و تطويره من قبل مبارك الرشيدي</div>', unsafe_allow_html=True)
